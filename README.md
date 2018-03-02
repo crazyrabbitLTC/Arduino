@@ -3,6 +3,8 @@ Arduino Projects
 
 This is a simple collection of Arduino Scripts for various fun weekend projects. 
 
+Maybe if I get a chance I'll improve upon it or optimise it. 
+
 All the parts are from Adafruit.com
 
 1 x Adafruit Feather M0 WiFi - ATSAMD21 + ATWINC1500
