@@ -1,0 +1,243 @@
+
+
+#include <SPI.h>
+#include <WiFi101.h>
+#include <Wire.h>
+//OLED DISPLAY 
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <ArduinoJson.h>
+#include "arduino_secrets.h" 
+
+//Declare Display type
+Adafruit_SSD1306 display = Adafruit_SSD1306();
+
+//declare button
+const int buttonPin = 6;
+int buttonState = 0;
+
+//WIFI DATA
+char ssid[] = "Your WIFI NETWORK SSID";        
+char pass[] = "YOUR WIFI NETWORK PASSWORD";   
+int keyIndex = 0;    
+char server[] = "api.etherscan.io"; 
+int loopCount = 0;  
+String incomingData;
+String strJsonData;
+
+   
+
+//Initialize Ethernet client
+int status = WL_IDLE_STATUS;
+WiFiSSLClient client;
+
+
+void setup() {
+//Configure pins for Adafruit ATWINC1500 Feather
+WiFi.setPins(8,7,4,2);
+
+//Initialize Button B
+pinMode(buttonPin, INPUT);
+
+//initialize dislay
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  
+//initialize serial line
+  Serial.begin(9600);
+
+//Display Startup Sequence on Serial. 
+  Serial.println("Program Startup. Setup Running.");
+  Serial.println("Test OLED STARTED");
+
+
+  display.display();
+  delay(1000);
+
+//Clear the Display Buffer
+
+  display.clearDisplay();
+  display.display();
+
+//Announce Setup on Display
+
+  display.setTextSize(2);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+  display.print("Startup...");
+  display.display();
+  
+//Connect to Wifi Network
+
+  // attempt to connect to WiFi network:
+  while (status != WL_CONNECTED) {
+    //on Serial
+    Serial.print("Attempting to connect to SSID: ");
+    //on display
+    display.print("Attempting to connect to SSID: ");
+    //on Serial
+    Serial.println(ssid);
+    //on display
+    display.println(ssid);
+    display.display();
+    
+    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+    status = WiFi.begin(ssid, pass);
+
+    // wait 10 seconds for connection:
+    delay(3000);
+  }
+  Serial.println("Connected to wifi");
+  oledDisplay("Connected to Wifi");
+  printWiFiStatus();
+
+   //Try to get Data
+     Serial.println("\nStarting connection to server...");
+  if (client.connect(server, 443)) {
+    Serial.println("connected to server");
+    oledDisplay("connected to server");
+    client.println("GET /api?module=stats&action=ethprice&apikey=YOUR API KEY HTTP/1.1"  );
+    client.println("Host: api.etherscan.io");
+    client.println("User-Agent: ArduinoWiFi/1.0");
+    client.println("Connection: close");
+    client.println();
+  }
+
+}
+
+void loop(){
+
+  //wait for button press
+  buttonState = digitalRead(buttonPin);
+ 
+ if (buttonState == LOW) {
+    Serial.println("Setup Function Started2");
+    String oledtext = "..working..";
+    oledDisplay(oledtext);
+   
+
+   //Post Incoming Data
+    while (client.available()) {
+      char c = client.read();
+      Serial.write(c);
+      incomingData = incomingData += c;
+     
+    }
+
+//print on serial the output strinb
+    strJsonData = stripHeaders(incomingData);
+    Serial.println(strJsonData);
+
+//Create a Char
+
+char json[strJsonData.length()+1];
+
+//Make a Char from a String
+for (int i=0; i <= strJsonData.length(); i++){
+
+  json[i]=strJsonData.charAt(i);
+   }
+
+    jsonData(json);
+    
+  /*
+  //Testing Json Function
+  Serial.println("Testing Json Function");
+
+  //String stringtotest = "{\"status\":\"1\",\"message\":\"OK\",\"result\":{\"ethbtc\":\"0.08028\",\"ethbtc_timestamp\":\"1519934747\",\"ethusd\":\"873.92\",\"ethusd_timestamp\":\"1519934751\"}}";
+  char jsonString[] = "{\"status\":\"1\",\"message\":\"OK\",\"result\":{\"ethbtc\":\"0.08028\",\"ethbtc_timestamp\":\"1519934747\",\"ethusd\":\"873.92\",\"ethusd_timestamp\":\"1519934751\"}}";
+  json(jsonString);
+  */
+
+  
+ }
+ //delay(1000);
+}
+
+String stripHeaders(String DataJson){
+
+int lastCarriageReturn = DataJson.lastIndexOf("\n");
+
+return(DataJson.substring(lastCarriageReturn, DataJson.length()));
+  
+}
+
+void oledDisplay(String displayText){
+
+  display.setTextSize(1);
+  display.clearDisplay();
+  display.display();
+  display.setCursor(0,0);
+  display.print(displayText);
+  display.display();
+}
+
+
+void jsonData(char json[]) {
+
+  // Memory pool for JSON object tree.
+  //
+  // Inside the brackets, 200 is the size of the pool in bytes.
+  // Don't forget to change this value to match your JSON document.
+  // Use arduinojson.org/assistant to compute the capacity.
+  StaticJsonBuffer<240> jsonBuffer;
+
+
+  JsonObject& root = jsonBuffer.parseObject(json);
+
+  // Test if parsing succeeds.
+  if (!root.success()) {
+    Serial.println("parseObject() failed");
+    return;
+  }
+
+  // Fetch values.
+
+  bool status = root["status"];
+  const char* message = root["message"];
+  double ethBtc = root["result"]["ethbtc"];
+  int btcTimestamp = root["result"]["ethbtc_timestamp"];
+  double ethUsd = root["result"]["ethusd"];
+    int usdTimestamp = root["result"]["ethusd_timestamp"];
+  
+  // Print values.
+  Serial.println("Status");
+  Serial.println(status);
+  Serial.println("Message");
+  Serial.println(message);
+  Serial.println("ethBTC Rate:");
+  Serial.println(ethBtc);
+  Serial.println("BTC Timestamp");
+  Serial.println(btcTimestamp);
+  Serial.println("ethUSD Rate:");
+  Serial.println(ethUsd);
+  Serial.println("ETH Timestamp");
+  Serial.println(usdTimestamp);
+
+  display.setTextSize(1);
+  display.clearDisplay();
+  display.display();
+  display.setCursor(0,0);
+  display.print("ETH Price: ");
+  display.println(ethUsd);
+  display.print("BTC Price: ");
+  display.print(ethUsd/ethBtc);
+  display.display();
+  
+}
+
+void printWiFiStatus() {
+  // print the SSID of the network you're attached to:
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
+
+  // print your WiFi shield's IP address:
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  // print the received signal strength:
+  long rssi = WiFi.RSSI();
+  Serial.print("signal strength (RSSI):");
+  Serial.print(rssi);
+  Serial.println(" dBm");
+}
