@@ -1,4 +1,9 @@
 
+//This is a simple test project to get the price of Ethereum (and Bitcoin) and display it on the OLED display. 
+//On startup it connects to your wifi network and waits until you press button B to retrieve the prices. 
+//Using ArduinoJson it also parses more data from Etherscan.io
+
+//This code is rough- I might optimize it if I find the time. 
 
 #include <SPI.h>
 #include <WiFi101.h>
@@ -7,7 +12,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <ArduinoJson.h>
-#include "arduino_secrets.h" 
+#include "arduino_secrets.h"  //You will need this file seperately
 
 //Declare Display type
 Adafruit_SSD1306 display = Adafruit_SSD1306();
